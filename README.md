@@ -24,13 +24,25 @@ Explore the official [Backblaze B2 AI integrations and sample applications](http
 
 ## What it looks like
 
-**Dashboard** — tagged coverage and the top-label distribution across the corpus:
+**Dashboard** — tagged-coverage stat cards, the top-label distribution, and recent taggings across the audio corpus on B2.
 
-![Dashboard view showing corpus coverage stat cards and a top-label distribution](docs/images/b2-starterkit-dashboard1.png)
+![Dashboard with clips-ingested, clips-tagged, coverage and distinct-label stat cards, a top-label distribution, and recent taggings](docs/images/dashboard.png)
 
-**Taggings** — per-clip AudioSet labels and the 2048-dim embedding:
+**Ingest** — drag-and-drop upload of WAV / FLAC / MP3 clips straight to B2 under the `audio/` prefix.
 
-![Taggings workspace showing a clip's top labels as probability bars and its embedding summary](docs/images/b2-starterkit-fileview2.png)
+![Ingest page with a drag-and-drop upload dropzone for audio clips](docs/images/ingest.png)
+
+**Library** — the ingested audio corpus with per-clip duration, size, and tag status.
+
+![Library table listing ingested audio clips with duration, size, and tagged status](docs/images/library.png)
+
+**Taggings** — every PANNs run over the corpus with its model, top-k, and top AudioSet label.
+
+![Taggings workspace listing each clip with its model, top-k, and top AudioSet label](docs/images/taggings.png)
+
+**Tagging detail** — a single clip expanded to its top-10 AudioSet labels as probability bars, the 2048-dim embedding preview, and audio metadata.
+
+![Tagging detail dialog showing a clip's top-10 AudioSet labels as probability bars and its 2048-dim embedding summary](docs/images/tagging-detail.png)
 
 ## Quick Start
 
