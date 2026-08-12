@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { Tags } from "lucide-react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dropzone } from "./dropzone";
@@ -27,6 +30,7 @@ export function UploadForm() {
   const hasCompleted = items.some(
     (i) => i.status === "complete" || i.status === "error",
   );
+  const hasSuccess = items.some((i) => i.status === "complete");
   const summary = uploadQueueSummary(items);
 
   return (
@@ -50,7 +54,7 @@ export function UploadForm() {
         )}
         <UploadProgress disabled={uploading} items={items} onRetry={retry} />
         {hasCompleted && !uploading && (
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
             <Button
               aria-label="Clear completed and failed uploads"
               variant="outline"
@@ -59,6 +63,14 @@ export function UploadForm() {
             >
               Clear finished
             </Button>
+            {hasSuccess && (
+              <Button asChild size="sm">
+                <Link href="/library">
+                  <Tags aria-hidden="true" className="h-3.5 w-3.5" />
+                  Tag uploaded clips
+                </Link>
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { useCreateTagging, useLibrary } from "@/lib/queries";
 import type { LibraryClip } from "@panns-audioset-tagging/shared";
+import { TagAllUntaggedButton } from "@/components/taggings/tag-all-untagged-button";
 
 function formatDuration(seconds: number | null): string {
   if (seconds === null) return "—";
@@ -44,8 +45,15 @@ export function LibraryBrowser() {
   };
 
   return (
-    <Card className="overflow-hidden">
-      {library.isLoading ? (
+    <div>
+      {/* Bulk "tag the whole collection" action — self-hides when nothing is
+          untagged. empty:hidden collapses the row (margin included) so it adds
+          no spacing above the table when there is nothing to tag. */}
+      <div className="mb-4 flex justify-end empty:hidden">
+        <TagAllUntaggedButton size="sm" />
+      </div>
+      <Card className="overflow-hidden">
+        {library.isLoading ? (
         <div className="space-y-2 p-5">
           <Skeleton className="h-8 w-full" />
           <Skeleton className="h-8 w-full" />
@@ -125,6 +133,7 @@ export function LibraryBrowser() {
           }
         />
       )}
-    </Card>
+      </Card>
+    </div>
   );
 }

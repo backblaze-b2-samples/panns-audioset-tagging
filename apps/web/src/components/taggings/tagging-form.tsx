@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -114,9 +116,22 @@ export function TaggingForm({
                 </Select>
               )}
               <FormDescription>
-                {mode === "edit"
-                  ? "The source clip cannot change — create a new tagging to tag a different clip."
-                  : "Ingest clips on the Ingest page; pick the first available clip to start."}
+                {mode === "edit" ? (
+                  "The source clip cannot change — create a new tagging to tag a different clip."
+                ) : clips.length === 0 ? (
+                  <>
+                    No clips ingested yet.{" "}
+                    <Link
+                      href="/upload"
+                      className="font-medium text-primary underline underline-offset-4 hover:no-underline"
+                    >
+                      Go to Ingest
+                    </Link>{" "}
+                    to upload audio, then come back to tag it.
+                  </>
+                ) : (
+                  "Ingest clips on the Ingest page; pick the first available clip to start."
+                )}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -179,11 +194,19 @@ export function TaggingForm({
 
         <div className="flex justify-end">
           <Button type="submit" disabled={submitting}>
-            {submitting
-              ? "Tagging…"
-              : mode === "edit"
-                ? "Save & re-tag"
-                : "Run tagging"}
+            {submitting ? (
+              <>
+                <Loader2
+                  className="h-3.5 w-3.5 animate-spin"
+                  aria-hidden="true"
+                />
+                Loading model / tagging…
+              </>
+            ) : mode === "edit" ? (
+              "Save & re-tag"
+            ) : (
+              "Run tagging"
+            )}
           </Button>
         </div>
       </form>

@@ -49,6 +49,7 @@ import type {
 } from "@panns-audioset-tagging/shared";
 import { TaggingForm } from "./tagging-form";
 import { TaggingDetailDialog } from "./tagging-detail-dialog";
+import { TagAllUntaggedButton } from "./tag-all-untagged-button";
 
 function filenameOf(key: string): string {
   return key.split("/").pop() || key;
@@ -114,7 +115,8 @@ export function TaggingsWorkspace() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <TagAllUntaggedButton size="sm" variant="outline" />
         <Button size="sm" onClick={() => setNewOpen(true)}>
           <Plus className="h-3.5 w-3.5" />
           New tagging
