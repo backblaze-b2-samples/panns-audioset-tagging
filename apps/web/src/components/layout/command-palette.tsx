@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
-  Upload,
+  AudioLines,
+  Library,
+  Tags,
   FolderOpen,
   Settings,
   Sparkles,
@@ -37,10 +39,11 @@ interface CommandPaletteProps {
 
 const routes = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Upload", href: "/upload", icon: Upload },
-  { label: "Files", href: "/files", icon: FolderOpen },
+  { label: "Ingest", href: "/upload", icon: AudioLines },
+  { label: "Library", href: "/library", icon: Library },
+  { label: "Taggings", href: "/taggings", icon: Tags },
+  { label: "Explorer", href: "/files", icon: FolderOpen },
   { label: "Settings", href: "/settings", icon: Settings },
-  { label: "Design System", href: "/design", icon: Sparkles },
 ];
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {

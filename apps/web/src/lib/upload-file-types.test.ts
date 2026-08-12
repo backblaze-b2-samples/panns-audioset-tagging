@@ -18,6 +18,7 @@ const BACKEND_ALLOWED_TYPES = [
   "video/mp4",
   "audio/mpeg",
   "audio/wav",
+  "audio/flac",
   "text/markdown",
   "application/yaml",
   "application/x-yaml",

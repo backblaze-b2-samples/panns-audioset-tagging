@@ -7,7 +7,7 @@ import {
   type DemoPreferences,
 } from "./demo-preferences";
 
-const KEY = "vibe-demo-preferences";
+const KEY = "panns-demo-preferences";
 
 // jsdom is not the default test environment here, so stand up a minimal
 // localStorage-backed `window` for the persistence round-trip.

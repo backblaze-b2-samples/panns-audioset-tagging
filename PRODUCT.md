@@ -6,20 +6,23 @@ product
 
 ## Users
 
-AI coding agents and "vibe coders" (developers who lean on AI to move fast) who clone
-this kit as the foundation for a new full-stack app. Their context: they want to skip
-the boilerplate loop (dashboard, upload, file browser, cloud storage wiring) and go
-straight to building their app's unique features. They read the repo, keep the shared
-scaffolding, and rebrand + rewrite the dashboard for their own use case.
+Teams that need to label large audio corpora and index the results in object
+storage: acoustic-monitoring teams, broadcast/media archivists, and smart-home
+dataset builders — plus the AI coding agents that build on their behalf. Their
+context: they have many unlabeled clips and want AudioSet event tags + embeddings
+per clip, written somewhere durable and queryable, without standing up a second
+inference API or a database. They bring a B2 bucket and their audio.
 
 ## Product Purpose
 
-An engineering-grade full-stack starter kit (Next.js 16 + React 19 + Tailwind v4 +
-shadcn/ui frontend, FastAPI backend) with Backblaze B2 cloud storage integrated out of
-the box. It ships a dashboard, drag-and-drop upload, and a file browser so builders
-start from a working app, not a blank page. Success = a builder can clone it, run it,
-rebrand it via one config file, and trust every screen enough to build on top without
-first fixing it.
+A full-stack sample (Next.js 16 + React 19 + Tailwind v4 + shadcn/ui frontend,
+FastAPI backend) that tags audio with **PANNs** AudioSet models running locally
+and stores every artifact in **Backblaze B2**: source audio under `audio/`,
+per-clip tag JSON under `tags/`, and a `labels_index.jsonl` manifest at the bucket
+root that downstream training/search jobs read over the S3 API. It demonstrates B2
+as the storage layer for a bulk audio-ML workflow. Success = a builder can clone
+it, point it at a bucket, ingest clips, tag them (CPU by default, no second API
+key), and consume the manifest from their own pipeline.
 
 ## Maturity and Support Boundary
 

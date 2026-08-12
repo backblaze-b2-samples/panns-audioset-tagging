@@ -125,7 +125,7 @@ with a concurrently held `0.0.0.0` bind and would report a free port as busy.
 - Frontend typecheck: `pnpm typecheck`
 - Frontend lint: `pnpm lint`
 - Backend lint: `pnpm lint:api`
-- E2E: `pnpm test:e2e` (run `pnpm --filter @vibe-coding-starter-kit/web exec playwright install chromium` once first)
+- E2E: `pnpm test:e2e` (run `pnpm --filter panns-audioset-tagging-web exec playwright install chromium` once first)
 
 ### Pre-commit
 
@@ -363,16 +363,16 @@ when `pnpm test:e2e` runs.
   them. To extend one (e.g. give a dialog action a variant), wrap it or pass
   `buttonVariants()` / classes at the call site instead of editing the file.
 
-**Design system:** the full token + primitive catalog lives in
-[design-system.md](design-system.md), with a live reference at the `/design`
-route. Build new screens from these primitives and tokens — don't hand-roll.
+**Design system:** the design tokens live in `apps/web/src/app/globals.css` and
+the primitives in `apps/web/src/components/ui/` (shadcn). Build new screens from
+these primitives and tokens — don't hand-roll.
 
 ### Building a screen
 
 1. Page shell: a `page-title` heading + one-line `text-muted-foreground`
    description, then content stacked with `space-y-*`.
-2. Group content in `Card` (`components/ui/card`); use `Section` for labelled
-   groupings on reference pages.
+2. Group content in `Card` (`components/ui/card`) with a `CardHeader` /
+   `CardTitle` for labelled groupings.
 3. Fetch through a `queries.ts` hook (see Data Fetching below) — never bare
    `useEffect + fetch`.
 4. Cover every state: `Skeleton` while loading, `EmptyState` when there's no

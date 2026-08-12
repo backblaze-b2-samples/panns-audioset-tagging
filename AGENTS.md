@@ -22,20 +22,21 @@ infra/vercel/      Vercel deployment contract
 
 ## 2. Building on This Starter Kit
 
-When this repo is used as the foundation for a new app, the following pieces are part of the starter contract — keep them. Adapt only what the new use case actually requires.
+This sample is built on the Backblaze B2 vibe-coding starter kit. The following pieces are part of the shared starter contract — keep them. Everything else is this sample's own audio-tagging domain.
 
 **Keep as-is (do not strip, rename, or replace)**
-- **UI kit / design system.** `apps/web/src/components/ui/` (shadcn primitives), the design tokens in `apps/web/src/app/globals.css`, and the `/design` reference page. Build new screens with these primitives; never edit the generated `components/ui/` files directly. Restyling happens through tokens in `globals.css`.
-- **File Explorer.** `/files` route, `apps/web/src/app/files/`, and `apps/web/src/components/files/`. The Files sidebar entry in `apps/web/src/components/layout/app-sidebar.tsx` stays.
-- **Upload.** `/upload` route, `apps/web/src/app/upload/`, and `apps/web/src/components/upload/`. The Upload sidebar entry stays.
-- The sidebar nav itself (Dashboard, Upload, Files, Settings, plus the Design System utility link).
+- **UI kit / design system.** `apps/web/src/components/ui/` (shadcn primitives) and the design tokens in `apps/web/src/app/globals.css`. Build new screens with these primitives; never edit the generated `components/ui/` files directly. Restyling happens through tokens in `globals.css`.
+- **Full-bucket Explorer.** `/files` route, `apps/web/src/app/files/`, and `apps/web/src/components/files/`. The Explorer sidebar entry in `apps/web/src/components/layout/app-sidebar.tsx` stays — it is the raw B2 window.
+- **Ingest.** `/upload` route (labelled "Ingest"), `apps/web/src/app/upload/`, and `apps/web/src/components/upload/`. The Ingest sidebar entry stays.
+- The B2 repo spine (`apps/web/.../lib/api-client.ts`, `services/api/app/repo/`) and the layered backend.
 
-**Adapt to the new use case**
-- **Dashboard.** `/` route and `apps/web/src/components/dashboard/` (stats cards, upload chart, recent uploads table) are illustrative defaults. Replace them with metrics, charts, and tables that reflect what the new app actually does (e.g. transcripts processed, embeddings indexed, classifications run). New aggregations must flow through the same `runtime -> service -> repo` layering and be exposed via TanStack Query hooks in `apps/web/src/lib/queries.ts` — no bare `useEffect + fetch`.
-- Update `docs/features/dashboard.md` in the same PR as any dashboard change (see §9).
+**This sample's own domain (audio tagging)**
+- **Dashboard, Library, Taggings.** `/`, `/library`, `/taggings` and their components are this sample's audio-tagging screens. The Taggings workspace is the primary entity (create / read / edit / delete / re-tag). New aggregations flow through the same `runtime -> service -> repo` layering and TanStack Query hooks in `apps/web/src/lib/queries.ts` — no bare `useEffect + fetch`.
+- The PANNs engine is confined to `services/api/app/repo/panns_engine.py` (torch/panns imports lazy); storage stays boto3 in `repo/`.
+- Update the matching `docs/features/*.md` in the same PR as any feature change (see §9).
 
 **Why this contract exists**
-- The UI kit, Files, and Upload pages are the reusable B2-backed scaffolding that makes this a starter kit — stripping them defeats the purpose. The dashboard is the only screen explicitly designed to be rewritten per app.
+- The UI kit, Explorer, Ingest, and B2 spine are the reusable B2-backed scaffolding from the starter kit. The Dashboard, Library, and Taggings screens are this sample's domain, built on top of that spine.
 
 ## 3. Architectural Invariants
 

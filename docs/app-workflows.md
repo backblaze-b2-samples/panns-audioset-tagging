@@ -1,45 +1,52 @@
-<!-- last_verified: 2026-08-06 -->
+<!-- last_verified: 2026-08-12 -->
 # App Workflows
 
-User journeys inside the application.
+User journeys inside the application. The core loop is **Ingest → Library → Tag →
+consume the manifest**.
 
-## Upload Files
+## Ingest audio
 
-- User navigates to `/upload`
-- Drops or selects files in the dropzone
+- User navigates to `/upload` (labelled **Ingest**)
+- Drops or selects audio clips (WAV / FLAC / MP3) in the dropzone
 - Client validates file size (max 100MB) and type
-- Files upload **directly from the browser to B2** (a presigned PUT). A determinate progress bar tracks the bytes leaving the browser; once they are all sent the row switches to "Verifying upload..." with an *indeterminate* sweeping bar while the API HEADs and magic-byte-sniffs the stored object. That phase has no percentage to report, and a bar parked at a full 100% read as finished-but-stuck
-- On success: toast notification, green checkmark, and a "View in Files" link through to the browser
+- Clips upload **directly from the browser to B2** (a presigned PUT) into the `audio/` prefix. A determinate progress bar tracks the bytes leaving the browser; once sent the row switches to "Verifying upload..." while the API HEADs and magic-byte-sniffs the stored object
+- On success: toast notification and a green checkmark. The clip now appears in the Library
 - On failure: red status icon with error message
-- User can clear completed uploads
-- The queue lives in an app-wide provider: navigating to another page keeps the upload running, shows an "Uploading N files" indicator in the header, and keeps the duplicate-upload guard armed
-- Reloading or closing mid-upload asks for confirmation first; if the upload dies anyway, the next load says which file didn't finish
-- See: [File Upload](features/file-upload.md)
+- See: [Ingest](features/file-upload.md)
 
-## Browse and Manage Files
+## Browse the Library and tag a clip
 
-- User navigates to `/files`
-- Page loads the 100 most recent objects from the API (sorted most recent first). While it loads, the page says so on screen and escalates the wording if the wait runs long — a full bucket listing measured 2.8s-21s cold
-- If that limit was hit, a notice states how many objects the bucket actually holds — the page never claims to show everything
-- Files displayed in tree view with folders and type-specific icons
-- Folders auto-expand on load until the *majority* of the listed files are reachable without clicking, so the page's own "click a file" instruction is always actionable. Stopping at the first visible file was not enough: one stray top-level object left the other 99 sealed in collapsed folders while the page claimed to show 100
-- Clicking a file row opens its preview; the per-row actions menu (preview / download / delete) is always visible, on every viewport
-- Arriving at `/files?preview=<key>` expands that file's folders and opens its preview directly. This is how the ⌘K palette and the dashboard's recent-uploads rows hand off a *specific* file; the param is consumed on arrival so it doesn't re-fire later
-- **Preview**: opens dialog with image/PDF preview + metadata panel, and the file's Download / Delete actions — the advertised "click a file" path offers everything the row menu does. The loading state holds until the media paints; a failure offers "Open in a new tab". The preview URL is signed with `Content-Disposition: inline` so PDFs render in place
-- **Download**: shows a pending state on the row plus a toast while the presigned URL is fetched, then starts the download via an anchor click (which, unlike a popup, still works if the click's user activation expired during a slow presign). Failures are reported; the click can never silently do nothing
-- **Delete**: the confirmation dialog stays open showing "Deleting..." until the request settles, then the row disappears with the toast (optimistic cache update) and the list reconciles with the server. The dialog is held deliberately — Radix closes on action click by default, which dismissed the only pending state and left the row looking untouched while the delete was still in flight
-- Empty bucket shows "No files found" with upload prompt
-- See: [File Browser](features/file-browser.md)
+- User navigates to `/library`
+- The page lists clips under `audio/` with a **Tagged / Untagged** badge, duration (for tagged clips, from the manifest), and size
+- For an untagged clip, clicking **Tag** runs a default tagging (`cnn14-32k`, top-k 10) — the first run downloads the ~300 MB Cnn14 checkpoint and runs on CPU by default
+- Tagged clips link through to the Taggings workspace
+- Empty state points at Ingest
+- See: [Library & Explorer](features/file-browser.md)
 
-## View Dashboard
+## Work with Taggings (the primary entity)
+
+- User navigates to `/taggings`
+- **Create**: "New tagging" opens a form — pick an ingested clip (Select from the Library), a model (Select: cnn14-32k default / cnn14-16k), and top-k (Select: 5/10/15/20). Submitting runs PANNs, writes `tags/<audio_key>.json`, and rebuilds the manifest
+- **Read**: the detail dialog shows the top-k labels as probability bars, an embedding summary (dim 2048, L2 norm, first-64 sparkline), an inline audio player (presigned URL), source metadata, and a link to the raw tag JSON
+- **Edit**: change the model/top-k (the clip is read-only identity) and re-run
+- **Delete**: an alert-dialog confirms; the tag JSON and its manifest line are removed, the source clip is kept
+- **Re-tag (run)**: one click recomputes with the stored parameters
+- See: [Taggings](features/taggings.md)
+
+## Explore the full bucket
+
+- User navigates to `/files` (labelled **Explorer**) — the raw, full-bucket window into B2: `audio/`, `tags/…json`, and `labels_index.jsonl`
+- Clicking an object opens its preview; the metadata panel shows checksums and, for audio, duration / sample-rate / channels
+- Preview / download / delete work per object
+- See: [Library & Explorer](features/file-browser.md)
+
+## View the corpus Dashboard
 
 - User navigates to `/` (home)
-- Three parallel API calls load: stats, recent files, upload activity — all served from one shared bucket listing that the API warms at startup
-- While stats load, the page states it in words above the cards rather than showing silent skeletons
-- Stats cards show: total files, storage used, uploads today, total downloads
-- Upload chart shows last 7 days of upload activity as bar chart
-- Recent uploads table shows last 10 files with filename, size, type, date. Each filename links to that file's preview on `/files` — `/files` teaches "click a file to preview it", so the same gesture here has to answer rather than being inert text
-- Empty state: "No files uploaded yet" messages
+- `GET /taggings/stats` loads coverage + label distribution from the manifest
+- Stat cards show: clips ingested, clips tagged, % tagged, distinct labels
+- A top-label distribution and a recent-taggings list render below
+- Empty state points at Ingest when nothing is ingested yet
 - See: [Dashboard](features/dashboard.md)
 
 ## Change Preferences

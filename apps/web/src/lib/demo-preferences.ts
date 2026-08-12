@@ -35,7 +35,7 @@ export const DEMO_PREFERENCES_DEFAULTS: DemoPreferences = {
   quotaThreshold: "80",
 };
 
-const STORAGE_KEY = "vibe-demo-preferences";
+const STORAGE_KEY = "panns-demo-preferences";
 
 function isViewOption(value: unknown): value is DemoViewOption {
   return (

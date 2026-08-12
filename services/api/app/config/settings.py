@@ -2,11 +2,16 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    b2_endpoint: str = "https://s3.us-west-004.backblazeb2.com"
-    b2_key_id: str = ""
+    # Standardized B2 credentials (see docs/SECURITY.md). The S3 endpoint is
+    # derived from the region rather than configured directly, so there is one
+    # source of truth for "which B2 region" and no hardcoded region literal in
+    # source. B2_PUBLIC_URL_BASE is optional (only used to build public object
+    # URLs for a public bucket).
+    b2_application_key_id: str = ""
     b2_application_key: str = ""
     b2_bucket_name: str = ""
-    b2_public_url: str = ""
+    b2_region: str = ""
+    b2_public_url_base: str = ""
 
     api_port: int = 8000
     # Interactive API docs (/docs, /redoc, /openapi.json). On by default for
@@ -70,6 +75,16 @@ class Settings(BaseSettings):
     download_count_file: str = ".data/download_count.json"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+    @property
+    def b2_endpoint(self) -> str:
+        """S3-compatible endpoint for the configured B2 region.
+
+        Backblaze B2's S3 API host is always ``s3.<region>.backblazeb2.com``, so
+        the endpoint is a pure function of ``B2_REGION``. Startup validation (see
+        main.py) requires the region to be set before the app serves traffic.
+        """
+        return f"https://s3.{self.b2_region}.backblazeb2.com"
 
     @property
     def cors_origins(self) -> list[str]:

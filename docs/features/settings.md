@@ -1,4 +1,4 @@
-<!-- last_verified: 2026-07-28 -->
+<!-- last_verified: 2026-08-12 -->
 # Feature: Settings
 
 ## Purpose
@@ -10,7 +10,7 @@ that is Theme; the rest is a labelled demonstration.
 ## Used By
 - UI: `/settings` page (`SettingsForm`, `DangerZone`)
 - API: none. There is no account system
-- Storage: `next-themes`' own key for Theme; `localStorage` (`vibe-demo-preferences`) for the demo fields. The app has no server-side preferences store
+- Storage: `next-themes`' own key for Theme; `localStorage` (`panns-demo-preferences`) for the demo fields. The app has no server-side preferences store
 
 ## Core Functions
 - `apps/web/src/lib/theme-preference.ts` — `THEME_OPTIONS`, `DEFAULT_THEME`, `isThemeOption()`, `normalizeTheme()`; the one real preference

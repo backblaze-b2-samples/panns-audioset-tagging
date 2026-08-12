@@ -20,6 +20,7 @@ export const ACCEPTED_FILE_TYPES: Record<string, string[]> = {
   "video/mp4": [".mp4"],
   "audio/mpeg": [".mp3", ".mpeg"],
   "audio/wav": [".wav"],
+  "audio/flac": [".flac"],
   "text/markdown": [".md", ".markdown"],
   "application/yaml": [".yaml", ".yml"],
   "application/x-yaml": [".yaml", ".yml"],

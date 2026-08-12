@@ -30,6 +30,7 @@ ALLOWED_TYPES = {
     "video/mp4",
     "audio/mpeg",
     "audio/wav",
+    "audio/flac",
     # Text / data formats common in the sample apps built on this kit
     # (markdown docs, configs, datasets, tabular/structured exports).
     "text/markdown",
@@ -65,6 +66,7 @@ MIME_EXTENSION_MAP: dict[str, set[str]] = {
     "video/mp4": {"mp4"},
     "audio/mpeg": {"mp3", "mpeg"},
     "audio/wav": {"wav"},
+    "audio/flac": {"flac"},
     "text/markdown": {"md", "markdown"},
     "application/yaml": {"yaml", "yml"},
     "application/x-yaml": {"yaml", "yml"},
@@ -100,6 +102,7 @@ _CONTENT_SIGNATURES: dict[str, Callable[[bytes], bool]] = {
     "audio/mpeg": lambda d: d[:3] == b"ID3"
     or (len(d) >= 2 and d[0] == 0xFF and (d[1] & 0xE0) == 0xE0),
     "audio/wav": lambda d: d[:4] == b"RIFF" and d[8:12] == b"WAVE",
+    "audio/flac": lambda d: d[:4] == b"fLaC",
 }
 
 
@@ -161,9 +164,10 @@ class UploadError(Exception):
         super().__init__(detail)
 
 
-# Every object the app writes lives under this prefix; the API mints the key so
-# the client never chooses where its bytes land.
-UPLOAD_PREFIX = "uploads/"
+# Ingested audio clips live under this prefix; the API mints the key so the
+# client never chooses where its bytes land. The Library and the tagging
+# pipeline both read from `audio/`.
+UPLOAD_PREFIX = "audio/"
 # Leading bytes fetched for the post-upload sniff. The deepest signature check
 # reads data[8:12]; 512 leaves generous headroom for any future signature.
 _SNIFF_BYTES = 512
@@ -237,7 +241,7 @@ def verify_upload(key: str) -> FileUploadResponse:
     Enabling quarantine→promote (see the design plan) closes that window.
     """
     if not key.startswith(UPLOAD_PREFIX):
-        raise UploadError("Upload key must be under the uploads/ prefix")
+        raise UploadError("Upload key must be under the audio/ prefix")
     try:
         validate_key(key)
     except FileKeyError as e:

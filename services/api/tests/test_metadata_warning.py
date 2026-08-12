@@ -1,65 +1,57 @@
-"""A skipped format extractor must be reported, not silently omitted.
+"""A skipped/failed audio extractor must be reported, not silently omitted.
 
-An image above Pillow's decompression-bomb ceiling used to return a detail
-payload with no Image section and no explanation, so the UI looked like the
-file simply had no dimensions/EXIF. The safety limit stays; the skip is now
-surfaced in `metadata_warning`.
+An audio clip whose header can't be read used to (in the image/PDF starter)
+return a detail payload with no media section and no explanation. The safety
+stance is kept: the skip is surfaced in `metadata_warning` while checksums and
+size stay exact.
 """
 
 import io
+import wave
 
 import pytest
-from PIL import Image
 
 from app.service.metadata import extract_metadata
 
-
-def _png_bytes(width: int = 4, height: int = 4) -> bytes:
-    buffer = io.BytesIO()
-    Image.new("RGB", (width, height), (10, 20, 30)).save(buffer, format="PNG")
-    return buffer.getvalue()
+WAV_SAMPLE_RATE = 16000
+WAV_FRAMES = 8000
 
 
-def test_decodable_image_has_dimensions_and_no_warning():
-    detail = extract_metadata(_png_bytes(), "tiny.png", "image/png")
-    assert detail.image_width == 4
-    assert detail.image_height == 4
+def _wav_bytes(sample_rate: int = WAV_SAMPLE_RATE, channels: int = 1,
+               frames: int = WAV_FRAMES) -> bytes:
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as writer:
+        writer.setnchannels(channels)
+        writer.setsampwidth(2)
+        writer.setframerate(sample_rate)
+        writer.writeframes(b"\x00\x00" * frames * channels)
+    return buf.getvalue()
+
+
+def test_decodable_audio_has_metadata_and_no_warning():
+    detail = extract_metadata(_wav_bytes(), "clip.wav", "audio/wav")
+    assert detail.sample_rate == WAV_SAMPLE_RATE
+    assert detail.channels == 1
+    assert detail.duration_seconds == pytest.approx(WAV_FRAMES / WAV_SAMPLE_RATE)
     assert detail.metadata_warning is None
 
 
-def test_decompression_bomb_limit_is_reported(monkeypatch):
-    """Keep the bomb guard, but tell the user why the Image section is gone."""
-    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1)
-
-    detail = extract_metadata(_png_bytes(), "huge.png", "image/png")
-
-    assert detail.image_width is None
-    assert detail.image_height is None
+def test_undecodable_audio_is_reported():
+    detail = extract_metadata(b"not audio at all", "broken.wav", "audio/wav")
+    assert detail.sample_rate is None
+    assert detail.duration_seconds is None
     assert detail.metadata_warning is not None
-    assert "decompression-bomb" in detail.metadata_warning
+    assert detail.metadata_warning.startswith("Audio metadata unavailable")
     # Core fields still exact — the warning must not imply the file is broken.
     assert detail.md5
     assert detail.sha256
-    assert detail.size_bytes == len(_png_bytes())
+    assert detail.size_bytes == len(b"not audio at all")
 
 
-def test_undecodable_image_is_reported():
-    detail = extract_metadata(b"not an image at all", "broken.png", "image/png")
-    assert detail.image_width is None
-    assert detail.metadata_warning is not None
-    assert "could not be decoded" in detail.metadata_warning
-
-
-def test_unparseable_pdf_is_reported():
-    detail = extract_metadata(b"%PDF-1.4 truncated", "broken.pdf", "application/pdf")
-    assert detail.pdf_pages is None
-    assert detail.metadata_warning is not None
-    assert detail.metadata_warning.startswith("PDF metadata unavailable")
-
-
-def test_non_media_types_carry_no_warning():
+def test_non_audio_types_carry_no_warning():
     detail = extract_metadata(b"col_a,col_b\n1,2\n", "data.csv", "text/csv")
     assert detail.metadata_warning is None
+    assert detail.duration_seconds is None
 
 
 @pytest.mark.asyncio
@@ -70,19 +62,18 @@ async def test_detail_route_exposes_the_warning(client, monkeypatch):
     from app.service import files as files_service
     from app.types import FileMetadata
 
-    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1)
-    payload = _png_bytes()
+    payload = b"this is not a valid audio container"
 
     monkeypatch.setattr(
         files_service,
         "get_file_metadata",
         lambda key: FileMetadata(
             key=key,
-            filename="huge.png",
-            folder="uploads/",
+            filename="broken.wav",
+            folder="audio/",
             size_bytes=len(payload),
             size_human="1.0 KB",
-            content_type="image/png",
+            content_type="audio/wav",
             uploaded_at=datetime.now(UTC),
             url=None,
         ),
@@ -90,10 +81,10 @@ async def test_detail_route_exposes_the_warning(client, monkeypatch):
     monkeypatch.setattr(files_service, "get_object_bytes", lambda key: payload)
 
     response = await client.get(
-        "/files-by-key/detail", params={"key": "uploads/huge.png"}
+        "/files-by-key/detail", params={"key": "audio/broken.wav"}
     )
 
     assert response.status_code == 200
     body = response.json()
-    assert body["image_width"] is None
-    assert "decompression-bomb" in body["metadata_warning"]
+    assert body["duration_seconds"] is None
+    assert body["metadata_warning"].startswith("Audio metadata unavailable")

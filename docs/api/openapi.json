@@ -1,6 +1,124 @@
 {
   "components": {
     "schemas": {
+      "AudioMetadata": {
+        "properties": {
+          "channels": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channels"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "sample_rate": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Rate"
+          }
+        },
+        "title": "AudioMetadata",
+        "type": "object"
+      },
+      "CorpusStats": {
+        "description": "Aggregate dashboard metrics across the tagged corpus.",
+        "properties": {
+          "clips_ingested": {
+            "title": "Clips Ingested",
+            "type": "integer"
+          },
+          "clips_tagged": {
+            "title": "Clips Tagged",
+            "type": "integer"
+          },
+          "distinct_labels": {
+            "title": "Distinct Labels",
+            "type": "integer"
+          },
+          "pct_tagged": {
+            "title": "Pct Tagged",
+            "type": "number"
+          },
+          "recent_taggings": {
+            "items": {
+              "$ref": "#/components/schemas/TaggingSummary"
+            },
+            "title": "Recent Taggings",
+            "type": "array"
+          },
+          "top_labels": {
+            "items": {
+              "$ref": "#/components/schemas/TopLabelCount"
+            },
+            "title": "Top Labels",
+            "type": "array"
+          }
+        },
+        "required": [
+          "clips_ingested",
+          "clips_tagged",
+          "pct_tagged",
+          "distinct_labels",
+          "top_labels",
+          "recent_taggings"
+        ],
+        "title": "CorpusStats",
+        "type": "object"
+      },
+      "CreateTaggingRequest": {
+        "properties": {
+          "audio_key": {
+            "description": "Key of an ingested clip under audio/",
+            "title": "Audio Key",
+            "type": "string"
+          },
+          "model": {
+            "default": "cnn14-32k",
+            "enum": [
+              "cnn14-32k",
+              "cnn14-16k"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "top_k": {
+            "default": 10,
+            "enum": [
+              5,
+              10,
+              15,
+              20
+            ],
+            "title": "Top K",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "audio_key"
+        ],
+        "title": "CreateTaggingRequest",
+        "type": "object"
+      },
       "DailyUploadCount": {
         "properties": {
           "date": {
@@ -17,6 +135,40 @@
           "uploads"
         ],
         "title": "DailyUploadCount",
+        "type": "object"
+      },
+      "EditTaggingRequest": {
+        "description": "Edit an existing Tagging. `audio_key` is the read-only identity.",
+        "properties": {
+          "audio_key": {
+            "title": "Audio Key",
+            "type": "string"
+          },
+          "model": {
+            "default": "cnn14-32k",
+            "enum": [
+              "cnn14-32k",
+              "cnn14-16k"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "top_k": {
+            "default": 10,
+            "enum": [
+              5,
+              10,
+              15,
+              20
+            ],
+            "title": "Top K",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "audio_key"
+        ],
+        "title": "EditTaggingRequest",
         "type": "object"
       },
       "FileMetadata": {
@@ -76,7 +228,7 @@
       },
       "FileMetadataDetail": {
         "properties": {
-          "bitrate": {
+          "channels": {
             "anyOf": [
               {
                 "type": "integer"
@@ -85,18 +237,7 @@
                 "type": "null"
               }
             ],
-            "title": "Bitrate"
-          },
-          "codec": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Codec"
+            "title": "Channels"
           },
           "duration_seconds": {
             "anyOf": [
@@ -109,18 +250,6 @@
             ],
             "title": "Duration Seconds"
           },
-          "exif": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Exif"
-          },
           "extension": {
             "title": "Extension",
             "type": "string"
@@ -128,28 +257,6 @@
           "filename": {
             "title": "Filename",
             "type": "string"
-          },
-          "image_height": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Image Height"
-          },
-          "image_width": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Image Width"
           },
           "md5": {
             "title": "Md5",
@@ -170,18 +277,7 @@
             "title": "Mime Type",
             "type": "string"
           },
-          "pdf_author": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pdf Author"
-          },
-          "pdf_pages": {
+          "sample_rate": {
             "anyOf": [
               {
                 "type": "integer"
@@ -190,18 +286,7 @@
                 "type": "null"
               }
             ],
-            "title": "Pdf Pages"
-          },
-          "pdf_title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pdf Title"
+            "title": "Sample Rate"
           },
           "sha256": {
             "title": "Sha256",
@@ -307,6 +392,140 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "Label": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "probability": {
+            "title": "Probability",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "probability"
+        ],
+        "title": "Label",
+        "type": "object"
+      },
+      "LibraryClip": {
+        "description": "A clip under the sample-scoped audio/ prefix, with tag status.",
+        "properties": {
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "size_human": {
+            "title": "Size Human",
+            "type": "string"
+          },
+          "tag_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag Key"
+          },
+          "tagged": {
+            "title": "Tagged",
+            "type": "boolean"
+          },
+          "uploaded_at": {
+            "format": "date-time",
+            "title": "Uploaded At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "filename",
+          "size_bytes",
+          "size_human",
+          "uploaded_at",
+          "tagged"
+        ],
+        "title": "LibraryClip",
+        "type": "object"
+      },
+      "ManifestEntry": {
+        "description": "One line of labels_index.jsonl \u2014 the dataset index for downstream jobs.\n\n`top_labels` carries the top-k labels *with* their probabilities, so a\ntraining/search job can consume the index without opening every per-clip tag\nJSON, and so the Taggings list and Dashboard read from this one cheap object.",
+        "properties": {
+          "audio_key": {
+            "title": "Audio Key",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "tag_key": {
+            "title": "Tag Key",
+            "type": "string"
+          },
+          "tagged_at": {
+            "format": "date-time",
+            "title": "Tagged At",
+            "type": "string"
+          },
+          "top_k": {
+            "title": "Top K",
+            "type": "integer"
+          },
+          "top_labels": {
+            "items": {
+              "$ref": "#/components/schemas/Label"
+            },
+            "title": "Top Labels",
+            "type": "array"
+          }
+        },
+        "required": [
+          "audio_key",
+          "tag_key",
+          "model",
+          "top_k",
+          "top_labels",
+          "tagged_at"
+        ],
+        "title": "ManifestEntry",
+        "type": "object"
+      },
       "PresignUploadRequest": {
         "description": "What the browser declares before uploading directly to B2.",
         "properties": {
@@ -371,6 +590,168 @@
           "expires_in"
         ],
         "title": "PresignUploadResponse",
+        "type": "object"
+      },
+      "RunTaggingRequest": {
+        "description": "Re-tag with the Tagging's stored parameters (no form).",
+        "properties": {
+          "audio_key": {
+            "title": "Audio Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "audio_key"
+        ],
+        "title": "RunTaggingRequest",
+        "type": "object"
+      },
+      "Tagging": {
+        "description": "Full Tagging detail, including the embedding and its summary stats.",
+        "properties": {
+          "audio_key": {
+            "title": "Audio Key",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "embedding": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Embedding",
+            "type": "array"
+          },
+          "embedding_dim": {
+            "title": "Embedding Dim",
+            "type": "integer"
+          },
+          "embedding_l2_norm": {
+            "title": "Embedding L2 Norm",
+            "type": "number"
+          },
+          "labels": {
+            "items": {
+              "$ref": "#/components/schemas/Label"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "source_metadata": {
+            "$ref": "#/components/schemas/AudioMetadata"
+          },
+          "tag_key": {
+            "title": "Tag Key",
+            "type": "string"
+          },
+          "tagged_at": {
+            "format": "date-time",
+            "title": "Tagged At",
+            "type": "string"
+          },
+          "top_k": {
+            "title": "Top K",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "audio_key",
+          "tag_key",
+          "model",
+          "top_k",
+          "labels",
+          "tagged_at",
+          "embedding",
+          "embedding_dim",
+          "embedding_l2_norm",
+          "source_metadata"
+        ],
+        "title": "Tagging",
+        "type": "object"
+      },
+      "TaggingSummary": {
+        "description": "List-view projection of a Tagging (no embedding vector).",
+        "properties": {
+          "audio_key": {
+            "title": "Audio Key",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "labels": {
+            "items": {
+              "$ref": "#/components/schemas/Label"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "tag_key": {
+            "title": "Tag Key",
+            "type": "string"
+          },
+          "tagged_at": {
+            "format": "date-time",
+            "title": "Tagged At",
+            "type": "string"
+          },
+          "top_k": {
+            "title": "Top K",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "audio_key",
+          "tag_key",
+          "model",
+          "top_k",
+          "labels",
+          "tagged_at"
+        ],
+        "title": "TaggingSummary",
+        "type": "object"
+      },
+      "TopLabelCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "count"
+        ],
+        "title": "TopLabelCount",
         "type": "object"
       },
       "UploadStats": {
@@ -463,8 +844,8 @@
     }
   },
   "info": {
-    "description": "Local API for the Vibe Coding Starter Kit template, providing file upload and management backed by Backblaze B2. This contract documents the template's local API, not a hosted public endpoint.",
-    "title": "Vibe Coding Starter Kit API",
+    "description": "Local API for PANNs AudioSet Tagging: ingest audio clips to Backblaze B2, tag them locally with PANNs (527-class AudioSet labels + a 2048-dim embedding), and store every artifact \u2014 audio, per-clip tag JSON, and the labels_index.jsonl manifest \u2014 in B2 over the S3-compatible API. This contract documents the local API, not a hosted public endpoint.",
+    "title": "PANNs AudioSet Tagging API",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
@@ -980,6 +1361,31 @@
         ]
       }
     },
+    "/library": {
+      "get": {
+        "operationId": "library_endpoint_library_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LibraryClip"
+                  },
+                  "title": "Response Library Endpoint Library Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Library Endpoint",
+        "tags": [
+          "tagging"
+        ]
+      }
+    },
     "/metrics": {
       "get": {
         "operationId": "metrics_metrics_get",
@@ -996,6 +1402,278 @@
         "summary": "Metrics",
         "tags": [
           "metrics"
+        ]
+      }
+    },
+    "/taggings": {
+      "delete": {
+        "operationId": "delete_tagging_endpoint_taggings_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "audio_key",
+            "required": true,
+            "schema": {
+              "title": "Audio Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Tagging Endpoint",
+        "tags": [
+          "tagging"
+        ]
+      },
+      "get": {
+        "operationId": "list_taggings_endpoint_taggings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TaggingSummary"
+                  },
+                  "title": "Response List Taggings Endpoint Taggings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Taggings Endpoint",
+        "tags": [
+          "tagging"
+        ]
+      },
+      "post": {
+        "operationId": "create_tagging_endpoint_taggings_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTaggingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tagging"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Tagging Endpoint",
+        "tags": [
+          "tagging"
+        ]
+      }
+    },
+    "/taggings/detail": {
+      "get": {
+        "operationId": "get_tagging_endpoint_taggings_detail_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "audio_key",
+            "required": true,
+            "schema": {
+              "title": "Audio Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tagging"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tagging Endpoint",
+        "tags": [
+          "tagging"
+        ]
+      }
+    },
+    "/taggings/edit": {
+      "post": {
+        "operationId": "edit_tagging_endpoint_taggings_edit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditTaggingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tagging"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Tagging Endpoint",
+        "tags": [
+          "tagging"
+        ]
+      }
+    },
+    "/taggings/manifest": {
+      "get": {
+        "operationId": "get_manifest_endpoint_taggings_manifest_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ManifestEntry"
+                  },
+                  "title": "Response Get Manifest Endpoint Taggings Manifest Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Manifest Endpoint",
+        "tags": [
+          "tagging"
+        ]
+      }
+    },
+    "/taggings/run": {
+      "post": {
+        "operationId": "run_tagging_endpoint_taggings_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunTaggingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tagging"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Tagging Endpoint",
+        "tags": [
+          "tagging"
+        ]
+      }
+    },
+    "/taggings/stats": {
+      "get": {
+        "operationId": "corpus_stats_endpoint_taggings_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorpusStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Corpus Stats Endpoint",
+        "tags": [
+          "tagging"
         ]
       }
     },

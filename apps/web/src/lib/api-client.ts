@@ -1,11 +1,18 @@
 import type {
+  CorpusStats,
+  CreateTaggingRequest,
   DailyUploadCount,
+  EditTaggingRequest,
   FileMetadata,
   FileMetadataDetail,
   FileUploadResponse,
+  LibraryClip,
+  ManifestEntry,
   PresignUploadResponse,
+  Tagging,
+  TaggingSummary,
   UploadStats,
-} from "@vibe-coding-starter-kit/shared";
+} from "@panns-audioset-tagging/shared";
 
 // Single-origin deploys (Vercel `services`: one project serving web + API) put
 // the API under /api on the same origin, so no NEXT_PUBLIC_API_URL is needed —
@@ -41,6 +48,16 @@ export const API_CLIENT_ROUTES = {
   // payload ceiling no longer caps upload size.
   uploadPresign: { method: "post", path: "/upload/presign" },
   uploadVerify: { method: "post", path: "/upload/verify" },
+  // Taggings (primary entity) + the sample-scoped audio Library.
+  taggings: { method: "get", path: "/taggings" },
+  createTagging: { method: "post", path: "/taggings" },
+  deleteTagging: { method: "delete", path: "/taggings" },
+  taggingDetail: { method: "get", path: "/taggings/detail" },
+  editTagging: { method: "post", path: "/taggings/edit" },
+  runTagging: { method: "post", path: "/taggings/run" },
+  taggingsManifest: { method: "get", path: "/taggings/manifest" },
+  corpusStats: { method: "get", path: "/taggings/stats" },
+  library: { method: "get", path: "/library" },
 } as const satisfies Record<string, ApiClientRoute>;
 
 /** Typed API error with HTTP status code for caller-side branching. */
@@ -324,4 +341,64 @@ function putFileToStorage(
     }
     xhr.send(file);
   });
+}
+
+// --- Taggings (primary entity) + Library -----------------------------------
+
+function audioKeyQuery(audioKey: string): string {
+  if (audioKey.length === 0) {
+    throw new ApiError("audio_key is required", 400);
+  }
+  return new URLSearchParams({ audio_key: audioKey }).toString();
+}
+
+async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  return apiFetch<T>(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getTaggings() {
+  return apiFetch<TaggingSummary[]>(API_CLIENT_ROUTES.taggings.path);
+}
+
+export async function getTaggingDetail(audioKey: string) {
+  return apiFetch<Tagging>(
+    `${API_CLIENT_ROUTES.taggingDetail.path}?${audioKeyQuery(audioKey)}`
+  );
+}
+
+export async function createTagging(req: CreateTaggingRequest) {
+  return apiPost<Tagging>(API_CLIENT_ROUTES.createTagging.path, req);
+}
+
+export async function editTagging(req: EditTaggingRequest) {
+  return apiPost<Tagging>(API_CLIENT_ROUTES.editTagging.path, req);
+}
+
+export async function runTagging(audioKey: string) {
+  return apiPost<Tagging>(API_CLIENT_ROUTES.runTagging.path, {
+    audio_key: audioKey,
+  });
+}
+
+export async function deleteTagging(audioKey: string) {
+  return apiFetch<{ deleted: boolean; audio_key: string }>(
+    `${API_CLIENT_ROUTES.deleteTagging.path}?${audioKeyQuery(audioKey)}`,
+    { method: "DELETE" }
+  );
+}
+
+export async function getManifest() {
+  return apiFetch<ManifestEntry[]>(API_CLIENT_ROUTES.taggingsManifest.path);
+}
+
+export async function getCorpusStats() {
+  return apiFetch<CorpusStats>(API_CLIENT_ROUTES.corpusStats.path);
+}
+
+export async function getLibrary() {
+  return apiFetch<LibraryClip[]>(API_CLIENT_ROUTES.library.path);
 }

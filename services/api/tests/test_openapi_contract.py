@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-from main import app
+from main import API_DESCRIPTION, API_TITLE, API_VERSION, app
 
 # The exporter owns the target path and the JSON rendering format. Importing
 # both (instead of re-deriving them here) keeps this test and
@@ -31,14 +31,16 @@ def test_checked_in_openapi_contract_is_current():
 
 
 def test_openapi_metadata_uses_canonical_local_api_identity():
+    """The OpenAPI info block is the single source of truth in main.py.
+
+    Deriving the expected values from the app constants keeps this test from
+    drifting when the API title/description are rebranded.
+    """
     schema = app.openapi()
 
     assert schema["info"] == {
-        "title": "Vibe Coding Starter Kit API",
-        "description": (
-            "Local API for the Vibe Coding Starter Kit template, providing file "
-            "upload and management backed by Backblaze B2. This contract "
-            "documents the template's local API, not a hosted public endpoint."
-        ),
-        "version": "0.1.0",
+        "title": API_TITLE,
+        "description": API_DESCRIPTION,
+        "version": API_VERSION,
     }
+    assert API_TITLE == "PANNs AudioSet Tagging API"

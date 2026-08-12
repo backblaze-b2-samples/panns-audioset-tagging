@@ -2,11 +2,13 @@
 
 The endpoint heads the object (existence + size guard), downloads its bytes,
 and re-runs the real `extract_metadata()`. Here `get_file_metadata` and
-`get_object_bytes` are stubbed at the service module; extraction runs for real.
+`get_object_bytes` are stubbed at the service module; extraction runs for real
+(audio metadata via soundfile, checksums for everything else).
 """
 
 import hashlib
 import io
+import wave
 from datetime import UTC, datetime
 
 import pytest
@@ -20,6 +22,9 @@ TEXT_BYTES = b"hello, world\n"
 # below proves the real upload time is threaded through the recompute.
 UPLOADED_AT = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
 
+WAV_SAMPLE_RATE = 16000
+WAV_FRAMES = 8000  # 0.5s at 16 kHz
+
 
 def _fake_metadata(
     key: str,
@@ -30,7 +35,7 @@ def _fake_metadata(
     return FileMetadata(
         key=key,
         filename=key.rsplit("/", 1)[-1],
-        folder="uploads/",
+        folder="audio/",
         size_bytes=size_bytes,
         size_human=f"{size_bytes} B",
         content_type=content_type,
@@ -39,11 +44,14 @@ def _fake_metadata(
     )
 
 
-def _png_bytes(width: int, height: int) -> bytes:
-    from PIL import Image
-
+def _wav_bytes(sample_rate: int = WAV_SAMPLE_RATE, channels: int = 1,
+               frames: int = WAV_FRAMES) -> bytes:
     buf = io.BytesIO()
-    Image.new("RGB", (width, height), color=(10, 20, 30)).save(buf, format="PNG")
+    with wave.open(buf, "wb") as writer:
+        writer.setnchannels(channels)
+        writer.setsampwidth(2)
+        writer.setframerate(sample_rate)
+        writer.writeframes(b"\x00\x00" * frames * channels)
     return buf.getvalue()
 
 
@@ -55,7 +63,7 @@ async def test_detail_returns_checksums_for_text_file(client, monkeypatch):
     monkeypatch.setattr(files_service, "get_object_bytes", lambda key: TEXT_BYTES)
 
     resp = await client.get(
-        "/files-by-key/detail", params={"key": "uploads/note.txt"}
+        "/files-by-key/detail", params={"key": "audio/note.txt"}
     )
 
     assert resp.status_code == 200
@@ -66,32 +74,35 @@ async def test_detail_returns_checksums_for_text_file(client, monkeypatch):
     # The stored object's real upload time (head_object LastModified) is
     # threaded through the recompute — not the recompute wall-clock time.
     assert body["uploaded_at"].startswith("2026-01-02T03:04:05")
-    # Non-image / non-PDF: media/image/pdf fields stay null.
-    assert body["image_width"] is None
-    assert body["pdf_pages"] is None
+    # Non-audio: audio fields stay null and no warning is raised.
     assert body["duration_seconds"] is None
+    assert body["sample_rate"] is None
+    assert body["channels"] is None
+    assert body["metadata_warning"] is None
 
 
 @pytest.mark.asyncio
-async def test_detail_extracts_image_dimensions(client, monkeypatch):
-    png = _png_bytes(4, 7)
+async def test_detail_extracts_audio_metadata(client, monkeypatch):
+    wav = _wav_bytes()
     monkeypatch.setattr(
         files_service,
         "get_file_metadata",
         lambda key: _fake_metadata(
-            key, content_type="image/png", size_bytes=len(png)
+            key, content_type="audio/wav", size_bytes=len(wav)
         ),
     )
-    monkeypatch.setattr(files_service, "get_object_bytes", lambda key: png)
+    monkeypatch.setattr(files_service, "get_object_bytes", lambda key: wav)
 
     resp = await client.get(
-        "/files-by-key/detail", params={"key": "uploads/pixel.png"}
+        "/files-by-key/detail", params={"key": "audio/clip.wav"}
     )
 
     assert resp.status_code == 200
     body = resp.json()
-    assert body["image_width"] == 4
-    assert body["image_height"] == 7
+    assert body["sample_rate"] == WAV_SAMPLE_RATE
+    assert body["channels"] == 1
+    assert body["duration_seconds"] == pytest.approx(WAV_FRAMES / WAV_SAMPLE_RATE)
+    assert body["metadata_warning"] is None
 
 
 @pytest.mark.asyncio
@@ -99,7 +110,7 @@ async def test_detail_missing_file_returns_404(client, monkeypatch):
     monkeypatch.setattr(files_service, "get_file_metadata", lambda key: None)
 
     resp = await client.get(
-        "/files-by-key/detail", params={"key": "uploads/gone.txt"}
+        "/files-by-key/detail", params={"key": "audio/gone.wav"}
     )
 
     assert resp.status_code == 404
@@ -120,7 +131,7 @@ async def test_detail_oversized_file_rejected_without_download(client, monkeypat
     monkeypatch.setattr(files_service, "get_object_bytes", _boom)
 
     resp = await client.get(
-        "/files-by-key/detail", params={"key": "uploads/huge.bin"}
+        "/files-by-key/detail", params={"key": "audio/huge.wav"}
     )
 
     assert resp.status_code == 413
@@ -148,4 +159,4 @@ def test_get_object_bytes_wraps_streaming_read_failure(monkeypatch):
     monkeypatch.setattr(b2_object, "get_s3_client", lambda: _Client())
 
     with pytest.raises(RuntimeError):
-        b2_object.get_object_bytes("uploads/big.bin")
+        b2_object.get_object_bytes("audio/big.wav")

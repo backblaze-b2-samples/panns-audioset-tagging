@@ -1,30 +1,40 @@
-<!-- last_verified: 2026-08-06 -->
-# Vibe Coding Starter Kit
+<!-- last_verified: 2026-08-12 -->
+# PANNs AudioSet Tagging
 
-Stop wiring boilerplate and start building. This open-source starter kit gives vibe coders and AI coding agents a well-engineered foundation — a full-stack TypeScript + Python template with a pre-built dashboard UI, file upload system, and **[Backblaze B2](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start)** cloud storage already integrated. Save thousands of tokens on setup prompts, skip the "build me a dashboard from scratch" loop, and go straight to building your app's unique features.
+Tag large collections of unlabeled audio with **AudioSet** event labels using
+**PANNs** (Pretrained Audio Neural Networks, `qiuqiangkong/audioset_tagging_cnn`)
+running **locally** — no second API key, just **[Backblaze B2](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-panns-audioset-tagging)**
+credentials. For each clip PANNs produces a 527-class label-probability vector and
+a 2048-dim CNN embedding; the app extracts the top-k labels, writes a per-clip tag
+JSON to B2 under `tags/`, and maintains a `labels_index.jsonl` manifest that
+downstream training/search pipelines read over the S3-compatible API. Every
+artifact — source audio, tag JSON, embedding, manifest — lives in B2. **B2 is the
+storage layer for a bulk audio-ML workflow.**
 
-Explore the [Vibe Coding Starter Kit project page](https://backblazelabs.com/projects/vibe-coding-starter-kit/), the official [Backblaze B2 AI integrations and sample applications](https://www.backblaze.com/cloud-storage/b2-ai-integrations) directory, and the checked-in [local OpenAPI contract](docs/api/openapi.json).
+Explore the official [Backblaze B2 AI integrations and sample applications](https://www.backblaze.com/cloud-storage/b2-ai-integrations?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-panns-audioset-tagging) directory and the checked-in [local OpenAPI contract](docs/api/openapi.json).
 
 **What you get out of the box:**
-- Full-stack dashboard UI (Next.js 16 + React 19 + Tailwind v4 + shadcn/ui)
-- File upload with drag-and-drop, progress tracking, and metadata extraction
-- File browser with preview, download, and delete
+- Local PANNs AudioSet tagging — 527-class probabilities + 2048-dim embedding per clip, top-k extraction, **CPU by default** (GPU auto-detected)
+- Bulk audio ingest to B2 under `audio/…` (WAV / FLAC / MP3)
+- Per-clip tag artifacts in `tags/…json` and a `labels_index.jsonl` dataset manifest
+- A sample-scoped **Library** and the always-kept full-bucket **Explorer**, both over S3
+- A corpus **Dashboard** (tagged coverage + top-label distribution)
 - FastAPI backend with strict layered architecture and structural tests
 - Agent-optimized docs — your AI coding agent can read the repo and start contributing immediately
 
 ## What it looks like
 
-**Dashboard** — stats, upload activity, and recent uploads at a glance:
+**Dashboard** — tagged coverage and the top-label distribution across the corpus:
 
-![Dashboard view showing stat cards, upload activity chart, and recent uploads table](docs/images/b2-starterkit-dashboard1.png)
+![Dashboard view showing corpus coverage stat cards and a top-label distribution](docs/images/b2-starterkit-dashboard1.png)
 
-**File browser** — tree view with preview, download, and delete:
+**Taggings** — per-clip AudioSet labels and the 2048-dim embedding:
 
-![File browser view showing a tree of files with hover actions](docs/images/b2-starterkit-fileview2.png)
+![Taggings workspace showing a clip's top labels as probability bars and its embedding summary](docs/images/b2-starterkit-fileview2.png)
 
 ## Quick Start
 
-You need: Node.js >= 20, pnpm >= 9, Python >= 3.12, and a free **[Backblaze B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start)**.
+You need: Node.js >= 20, pnpm >= 9, Python >= 3.12, and a free **[Backblaze B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-panns-audioset-tagging)**.
 
 ### Supported local environments
 
@@ -54,12 +64,12 @@ cd my-cool-app
 **Option 2: Clone and reinitialize**
 
 ```bash
-git clone https://github.com/backblaze-b2-samples/vibe-coding-starter-kit.git my-cool-app
+git clone https://github.com/backblaze-b2-samples/panns-audioset-tagging.git my-cool-app
 cd my-cool-app
 rm -rf .git
 git init
 git add .
-git commit -m "Initial commit from vibe-coding-starter-kit"
+git commit -m "Initial commit from panns-audioset-tagging"
 ```
 
 Either way you get a clean project with no upstream history — ready to push to your own repo and point your agent at it.
@@ -85,16 +95,17 @@ existing `.env`.
 
 **2. Add your B2 credentials**
 
-Open `.env` in your editor and keep it visible. Then head to the [Backblaze B2 dashboard](https://secure.backblaze.com/b2_buckets.htm?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-oss-start) and:
+Open `.env` in your editor and keep it visible. Then head to the [Backblaze B2 dashboard](https://secure.backblaze.com/b2_buckets.htm?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-panns-audioset-tagging) and:
 
-1. **Create a bucket.** B2 will show two values — paste each into `.env`:
+1. **Create a bucket.** B2 will show these values — paste each into `.env`:
    - **Bucket Unique Name** → `B2_BUCKET_NAME`
-   - **Endpoint** → `B2_ENDPOINT`
+   - **Region** (from the endpoint `s3.<region>.backblazeb2.com`) → `B2_REGION`
+     — the S3 endpoint is derived from the region, so there is no separate endpoint variable.
 2. **Create an application key** with `Read and Write` permission. B2 will show two values — paste each into `.env`:
-   - **keyID** → `B2_KEY_ID`
+   - **keyID** → `B2_APPLICATION_KEY_ID`
    - **applicationKey** → `B2_APPLICATION_KEY` *(only shown once — paste it now)*
 
-> Want a walkthrough? See the docs for [creating a bucket](https://www.backblaze.com/docs/cloud-storage-create-and-manage-buckets) and [creating app keys](https://www.backblaze.com/docs/cloud-storage-create-and-manage-app-keys).
+> Want a walkthrough? See the docs for [creating a bucket](https://www.backblaze.com/docs/cloud-storage-create-and-manage-buckets?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-panns-audioset-tagging) and [creating app keys](https://www.backblaze.com/docs/cloud-storage-create-and-manage-app-keys?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-panns-audioset-tagging).
 
 **3. Run it**
 
@@ -102,18 +113,26 @@ Open `.env` in your editor and keep it visible. Then head to the [Backblaze B2 d
 pnpm dev
 ```
 
-That's it. Frontend at `localhost:3000`, API at `localhost:8000`. Upload a file and see it working. Interactive API docs (Swagger UI) are at `localhost:8000/docs`, with ReDoc at `/redoc`.
+That's it. Frontend at `localhost:3000`, API at `localhost:8000`. Ingest a clip on the **Ingest** page, then tag it on the **Taggings** page. Interactive API docs (Swagger UI) are at `localhost:8000/docs`, with ReDoc at `/redoc`.
+
+> **First tag run downloads the model.** PANNs runs locally. The first tagging
+> request downloads the Cnn14 checkpoint (~300 MB) to `~/panns_data` and runs on
+> **CPU by default** (a CUDA GPU is used automatically if present; Apple silicon
+> falls back to CPU — `panns-inference` has no MPS path). Subsequent runs reuse
+> the cached checkpoint.
 
 `pnpm dev` runs the preflight check first — it catches the common setup gotchas (wrong Node/Python version, missing venv, missing or placeholder `.env`, ports already taken) and tells you exactly how to fix each one. Run it standalone any time with `pnpm run doctor`.
 
 ## When to use
 
-Use this repository as a template or sample implementation when you want to
-clone or fork a working file-management dashboard, connect it to your own B2
-bucket, and then rebrand and extend it for your application. It provides
-production-minded engineering controls—including strict architecture,
-contract checks, tests, linting, and deployment runbooks—so you can begin with
-a dependable scaffold instead of a blank prototype.
+Use this sample when you need to label a large audio corpus with AudioSet event
+tags and index the results in object storage: acoustic-monitoring teams,
+broadcast/media archivists, and smart-home dataset builders. It shows an
+end-to-end bulk audio-ML workflow where B2 is the storage layer for every
+artifact (source audio, tag JSON, embedding, manifest), read back over the
+S3-compatible API. It also ships production-minded engineering controls — strict
+architecture, contract checks, tests, linting, and deployment runbooks — so you
+can extend it instead of starting from a blank prototype.
 
 ## When not to use
 
@@ -125,11 +144,12 @@ operations, capacity, compliance, and support decisions.
 
 ## Building Your App
 
-When you adapt this kit for a new app, keep the shared scaffolding and only swap out what's app-specific:
+This sample is built on the Backblaze B2 vibe-coding starter kit. When you adapt
+it, keep the shared scaffolding and only swap out what's app-specific:
 
-- **Keep** the UI kit (`apps/web/src/components/ui/` + design tokens in `globals.css` + `/design`).
-- **Keep** the File Explorer (`/files`) and Upload (`/upload`) pages and their sidebar nav entries — they're the reusable B2-backed surface.
-- **Adapt** the Dashboard (`/`) to your use case — replace the default stats, chart, and recent uploads with metrics that reflect what your app actually does.
+- **Keep** the UI kit (`apps/web/src/components/ui/` + design tokens in `globals.css`).
+- **Keep** the full-bucket Explorer (`/files`) and the Ingest (`/upload`) pages and their sidebar nav entries — they're the reusable B2-backed surface.
+- **Adapt** the Dashboard (`/`), Library (`/library`), and Taggings (`/taggings`) screens to your own entity and metrics.
 - **Rebrand** by editing a single file: `apps/web/src/lib/app-config.ts` holds the app name and description (`APP_NAME`, `APP_DESCRIPTION`). Changing them there updates the page title, sidebar, and breadcrumb everywhere — no other files to touch.
 
 Full contract and rationale: [AGENTS.md §2 — Building on This Starter Kit](AGENTS.md#2-building-on-this-starter-kit).
@@ -178,11 +198,12 @@ This approach draws from [OpenAI's experience building with Codex](https://opena
 
 ## Core Features
 
-- [File Upload](docs/features/file-upload.md) — drag-and-drop upload with real-time progress
-- [File Browser](docs/features/file-browser.md) — list, preview, download, delete files
-- [Dashboard](docs/features/dashboard.md) — stats cards, upload chart, recent uploads
-- [Metadata Extraction](docs/features/metadata-extraction.md) — image dimensions, EXIF, PDF info, checksums
-- [Design System](docs/design-system.md) — tokens, primitives, AI elements, the blaze generating loader, and inline `ErrorState` / `EmptyState` patterns. Live preview at `/design`.
+- [Audio tagging engine](docs/features/audio-tagging.md) — local PANNs: 527 AudioSet labels + a 2048-dim embedding, CPU by default
+- [Taggings](docs/features/taggings.md) — the primary entity: create / read / edit / delete / re-tag
+- [Labels index](docs/features/labels-index.md) — the `labels_index.jsonl` dataset manifest for training/search jobs
+- [Ingest (audio upload)](docs/features/file-upload.md) — drag-and-drop upload to `audio/` with real-time progress
+- [Library & Explorer](docs/features/file-browser.md) — sample-scoped audio Library + the full-bucket Explorer
+- [Dashboard](docs/features/dashboard.md) — corpus coverage + top-label distribution
 - Inline error handling — fetch failures surface *what's wrong* (API offline, 401, 5xx) and offer a Retry, instead of silently rendering empty state.
 - Single-source config — one `.env` at the repo root powers both API and web app, validated at startup so misconfig fails fast with a readable message.
 - Centralized data layer — every fetch goes through TanStack Query hooks in `apps/web/src/lib/queries.ts`; cache invalidation is one call after a mutation.
@@ -196,9 +217,10 @@ This approach draws from [OpenAI's experience building with Codex](https://opena
 
 ## Tech Stack
 
-- TypeScript, Next.js 16, React 19, Tailwind v4, shadcn/ui, Recharts
+- TypeScript, Next.js 16, React 19, Tailwind v4, shadcn/ui
 - TanStack Query — caching, dedup, retry, stale-while-revalidate for every fetch
-- Python 3.12+, FastAPI, boto3, Pydantic v2, Pillow, PyPDF2
+- Python 3.12+, FastAPI, boto3, Pydantic v2
+- **PANNs** via `panns-inference` (PyTorch), `librosa` + `soundfile` for audio decode/metadata
 - Backblaze B2 (S3-compatible object storage)
 - pnpm workspaces (monorepo)
 
@@ -225,7 +247,7 @@ This approach draws from [OpenAI's experience building with Codex](https://opena
 | `pnpm test:api` | Run backend tests |
 | `pnpm test:live:b2` | Opt-in real B2 connectivity test; requires `RUN_LIVE_B2_TESTS=1` and non-production credentials |
 | `pnpm check:structure` | Verify layering rules |
-| `pnpm test:e2e` | Playwright E2E smoke tests (run `pnpm --filter @vibe-coding-starter-kit/web exec playwright install chromium` once first) |
+| `pnpm test:e2e` | Playwright E2E smoke tests (run `pnpm --filter panns-audioset-tagging-web exec playwright install chromium` once first) |
 
 Run `pnpm run setup` once before local development, and rerun it after pulling
 dependency changes. It installs workspace dependencies from `pnpm-lock.yaml`
@@ -257,7 +279,7 @@ FastAPI API build from the same repo and share a single origin — the web app a
 `/` and the API under `/api`. One click, one project, **no CORS and no wiring
 two URLs together**.
 
-[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Fvibe-coding-starter-kit&project-name=vcsk&env=B2_KEY_ID,B2_APPLICATION_KEY,B2_ENDPOINT,B2_BUCKET_NAME&envDescription=B2%20credentials%20and%20bucket&envLink=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Fvibe-coding-starter-kit%2Fblob%2Fmain%2Finfra%2Fvercel%2FREADME.md)
+[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Fpanns-audioset-tagging&project-name=panns-audioset-tagging&env=B2_APPLICATION_KEY_ID,B2_APPLICATION_KEY,B2_REGION,B2_BUCKET_NAME&envDescription=B2%20credentials%20and%20bucket&envLink=https%3A%2F%2Fgithub.com%2Fbackblaze-b2-samples%2Fpanns-audioset-tagging%2Fblob%2Fmain%2Finfra%2Fvercel%2FREADME.md)
 
 Set the B2 credentials and bucket. Uploads go **directly from the browser to
 B2** (presigned PUT), so Vercel's 4.5 MB Function payload limit doesn't apply
@@ -283,8 +305,7 @@ for you.
 |-----|---------|
 | [AGENTS.md](AGENTS.md) | Agent table of contents — start here |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System layout, layering, data flows |
-| [docs/features/](docs/features/) | Feature docs (upload, browser, dashboard, metadata) |
-| [docs/design-system.md](docs/design-system.md) | Design tokens, primitives, AI elements, loader, error/empty states |
+| [docs/features/](docs/features/) | Feature docs (audio tagging, taggings, labels index, ingest, library/explorer, dashboard) |
 | [docs/app-workflows.md](docs/app-workflows.md) | User journeys |
 | [docs/dev-workflows.md](docs/dev-workflows.md) | Engineering workflows and testing |
 | [docs/SECURITY.md](docs/SECURITY.md) | Security principles |
@@ -295,8 +316,11 @@ for you.
 
 ## FAQ
 
-**What is the Vibe Coding Starter Kit?**
-An open-source, full-stack template (Next.js 16 + FastAPI) with a pre-built dashboard UI, drag-and-drop file upload, and file browser, with [Backblaze B2](https://www.backblaze.com/cloud-storage) cloud storage already integrated. You clone it, connect it to your own B2 bucket, then rebrand and extend it for your app.
+**What is PANNs AudioSet Tagging?**
+An open-source, full-stack sample (Next.js 16 + FastAPI) that tags audio clips with 527 AudioSet event labels and a 2048-dim embedding using **PANNs** locally, storing every artifact (source audio, tag JSON, embedding, and a `labels_index.jsonl` manifest) in [Backblaze B2](https://www.backblaze.com/cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-panns-audioset-tagging). You clone it, connect your own B2 bucket, then ingest and tag your audio corpus.
+
+**Do I need a second API key or a GPU?**
+No. Inference runs locally with only B2 credentials — no second API key. It runs on **CPU by default**; a CUDA GPU is used automatically if present. The first tag run downloads the ~300 MB Cnn14 checkpoint to `~/panns_data`.
 
 **Is it free?**
 Yes. The code is MIT-licensed (see [License](#license)), and Backblaze B2 offers a free account to get started.
@@ -326,16 +350,16 @@ It deploys to Vercel as a single project — the web app and FastAPI API build f
 Local scripts are supported on macOS, Linux, and WSL2. Native Windows is not supported yet — use WSL2 on Windows.
 
 **Where do I get help or report bugs?**
-Report repository defects and feature requests through [GitHub Issues](https://github.com/backblaze-b2-samples/vibe-coding-starter-kit/issues). For B2 account, billing, service, or API help, use [Backblaze Support](https://www.backblaze.com/help).
+Report repository defects and feature requests through [GitHub Issues](https://github.com/backblaze-b2-samples/panns-audioset-tagging/issues). For B2 account, billing, service, or API help, use [Backblaze Support](https://www.backblaze.com/help?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-panns-audioset-tagging).
 
 ## Maintenance and support
 
 Backblaze maintains this open-source template/sample to help developers get
 started with B2. Production use is possible with caution and requires your own
 validation. Report repository defects and feature requests through
-[GitHub Issues](https://github.com/backblaze-b2-samples/vibe-coding-starter-kit/issues);
+[GitHub Issues](https://github.com/backblaze-b2-samples/panns-audioset-tagging/issues);
 for B2 account, billing, service, or API help, use
-[Backblaze Support](https://www.backblaze.com/help). This template/sample is
+[Backblaze Support](https://www.backblaze.com/help?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-panns-audioset-tagging). This template/sample is
 not covered by the Backblaze service level agreement, and no SLA is provided
 for the repository software; any B2 service or support commitments are governed
 separately by the applicable Backblaze terms and support plan.

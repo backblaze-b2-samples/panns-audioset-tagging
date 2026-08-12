@@ -9,8 +9,19 @@ python-dotenv>=1.0.0
 pydantic>=2.10.0
 pydantic-settings>=2.7.0
 boto3>=1.35.0
-Pillow>=11.0.0
-PyPDF2>=3.0.0
+
+# Local PANNs AudioSet tagging engine (services/api/app/repo/panns_engine.py).
+# Bounded pins to avoid the unpinned-ML clean-install trap: torch<2.5 keeps a
+# CPU wheel that resolves on Python 3.12, numpy<2.0 stays numba/librosa-compatible,
+# and librosa<0.11 matches the soundfile/soxr decode stack. The model checkpoint
+# (~300 MB) auto-downloads to ~/panns_data on the first tag request, not here.
+panns-inference>=0.1.1
+torch>=2.2,<2.5
+torchlibrosa>=0.1.0
+librosa>=0.10,<0.11
+soundfile>=0.12
+numpy>=1.24,<2.0
+numba>=0.58
 
 # Dev / quality
 ruff>=0.8.0

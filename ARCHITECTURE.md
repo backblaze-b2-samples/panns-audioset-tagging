@@ -1,17 +1,20 @@
-<!-- last_verified: 2026-08-06 -->
+<!-- last_verified: 2026-08-12 -->
 # Architecture
 
 ## Components
 
 - **apps/web/** — Next.js 16 frontend (App Router, Tailwind v4, shadcn/ui)
-  - Dashboard with stats, upload chart, recent uploads
-  - File upload with drag-and-drop, progress tracking
-  - File browser with preview, download, delete
+  - Corpus Dashboard (tagged coverage + top-label distribution)
+  - Ingest (drag-and-drop audio upload to `audio/`)
+  - Library (sample-scoped audio explorer) + full-bucket Explorer
+  - Taggings workspace (the primary entity: create / read / edit / delete / re-tag)
   - Dark mode via `next-themes`
 - **services/api/** — FastAPI backend (layered architecture)
-  - REST API for file upload, listing, deletion
-  - B2 S3 integration via boto3
-  - File metadata extraction (images, PDFs)
+  - REST API for ingest, tagging, library, and the full-bucket file browser
+  - B2 S3 integration via boto3 (confined to `repo/`)
+  - Local PANNs AudioSet tagging engine (confined to `repo/panns_engine.py`) —
+    the only module importing `panns-inference` / `torch` / `librosa`, all lazily
+  - Audio metadata extraction (duration / sample-rate / channels) via `soundfile`
   - Health check endpoint with B2 connectivity verification
   - Structured JSON logging with request tracing
   - Prometheus-format metrics endpoint
@@ -49,17 +52,17 @@ runtime/   FastAPI routes — calls service, never repo directly
 services/api/
   main.py                  App entrypoint, middleware, router registration
   app/
-    types/                 Pydantic models (FileMetadata, UploadStats, etc.)
+    types/                 Pydantic models (FileMetadata, Tagging, LibraryClip, etc.)
     config/                Settings loaded from environment
-    repo/                  B2 S3 client (data access layer)
-    service/               Business logic (upload, files, metadata)
+    repo/                  B2 S3 client + PANNs engine (data access layer)
+    service/               Business logic (upload, files, tagging, metadata)
     runtime/               FastAPI route handlers
   tests/                   pytest tests (structural + integration)
 ```
 
 ## Boundary Invariants
 
-- **No external SDK leakage**: `boto3` is only imported in `app/repo/`. All other layers interact with B2 through the repo interface.
+- **No external SDK leakage**: `boto3` is only imported in `app/repo/`, and `panns-inference` / `torch` / `librosa` only in `app/repo/panns_engine.py` (lazily, inside functions). All other layers interact with B2 and the model through the repo interface, so test collection never imports torch.
 - **No raw dicts at boundaries**: All data crossing layer boundaries uses typed Pydantic models.
 - **No cross-layer mutable state**: Configuration is read-only after init, and no mutable state is shared *between* layers. Intra-layer caches/counters (the listing cache in `repo/list_cache.py`, the B2 connectivity cache in `repo/b2_client.py`, the download counter in `repo/counter.py`, the rate-limit and metrics state in `runtime/`) are module-local and guarded by a `threading.Lock`. The listing cache also owns the only background thread in the app: a stale entry is served immediately while that thread re-scans (stale-while-revalidate), and `main.lifespan` warms it once at startup so no user pays for the cold full-bucket scan.
 - **Validated inputs**: All HTTP inputs validated by FastAPI/Pydantic. File keys reject empty and path-traversal patterns; optional prefix confinement via `ALLOWED_KEY_PREFIX` (off by default).
@@ -108,10 +111,11 @@ See [docs/SECURITY.md](docs/SECURITY.md) for full security documentation.
 
 ## Data Flows
 
-- **Upload**: Browser -> `POST /upload/presign` (API validates the declared file + signs a PUT) -> Browser PUTs bytes **directly to B2** -> `POST /upload/verify` (API HEADs + Range-sniffs the stored object) -> response
-- **List**: Browser -> `GET /files` -> service calls repo -> returns file list
-- **Download**: Browser -> `GET /files/{key}/download` -> service validates key -> repo generates presigned URL -> browser downloads
-- **Delete**: Browser -> `DELETE /files/{key}` -> service validates key -> repo deletes from B2
+- **Ingest**: Browser -> `POST /upload/presign` (API validates the declared clip + signs a PUT to `audio/`) -> Browser PUTs bytes **directly to B2** -> `POST /upload/verify` (API HEADs + Range-sniffs the stored object) -> response
+- **Tag (create/edit/run)**: Browser -> `POST /taggings` -> service reads the clip bytes from B2 -> `repo/panns_engine.tag_audio()` (decode -> Cnn14 inference -> top-k + 2048-dim embedding) -> service writes `tags/<audio_key>.json` -> rebuilds `labels_index.jsonl` by listing `tags/` -> returns the `Tagging`
+- **List taggings / stats / library**: Browser -> `GET /taggings` | `/taggings/stats` | `/library` -> service reads the manifest (one object) and/or lists `audio/`
+- **Delete tagging**: Browser -> `DELETE /taggings?audio_key=…` -> service deletes the tag JSON -> rebuilds the manifest (source clip kept)
+- **Explorer list/download/delete**: Browser -> `GET /files` | `GET /files/{key}/download` | `DELETE /files/{key}` -> service validates key -> repo lists / presigns / deletes in B2
 
 ## Observability
 
@@ -134,8 +138,9 @@ silently drift from FastAPI. `GET /metrics` is intentionally server-only.
 
 ## Canonical Files
 
-- Layered API handler: `services/api/app/runtime/upload.py`
-- Service orchestration: `services/api/app/service/upload.py`
+- Layered API handler: `services/api/app/runtime/tagging.py`
+- Service orchestration: `services/api/app/service/tagging.py`
+- PANNs engine (repo layer): `services/api/app/repo/panns_engine.py`
 - B2 data access (repo layer): `services/api/app/repo/b2_client.py`
 - Pydantic models: `services/api/app/types/` (`files.py`, `upload.py`, `stats.py`, `formatting.py`)
 - Config (pydantic-settings): `services/api/app/config/settings.py`
@@ -147,10 +152,12 @@ silently drift from FastAPI. `GET /metrics` is intentionally server-only.
 
 ## Core Features
 
-- [File Upload](docs/features/file-upload.md)
-- [File Browser](docs/features/file-browser.md)
+- [Audio tagging engine](docs/features/audio-tagging.md)
+- [Taggings](docs/features/taggings.md)
+- [Labels index](docs/features/labels-index.md)
+- [Ingest (audio upload)](docs/features/file-upload.md)
+- [Library & Explorer](docs/features/file-browser.md)
 - [Dashboard](docs/features/dashboard.md)
-- [Metadata Extraction](docs/features/metadata-extraction.md)
 
 ## References
 

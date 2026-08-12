@@ -9,79 +9,38 @@ from app.types.formatting import humanize_bytes
 logger = logging.getLogger(__name__)
 
 
-# Pillow refuses to decode images above its decompression-bomb ceiling. That is
-# a deliberate safety control, so we keep it and report the skip instead of
-# returning a detail payload that silently omits the Image section.
-_BOMB_WARNING = (
-    "Image metadata unavailable — this image is larger than the decode limit "
-    "that guards against decompression-bomb attacks, so dimensions and EXIF "
-    "were skipped. Checksums and size are still exact."
-)
-_IMAGE_WARNING = (
-    "Image metadata unavailable — the image could not be decoded. Checksums "
-    "and size are still exact."
-)
-_PDF_WARNING = (
-    "PDF metadata unavailable — the document could not be parsed. Checksums "
-    "and size are still exact."
+_AUDIO_WARNING = (
+    "Audio metadata unavailable — the clip's header could not be read (the "
+    "format may be unsupported or the file truncated). Checksums and size are "
+    "still exact."
 )
 
 
-def _image_warning(exc: Exception) -> str:
-    """Pick the message for a failed image decode.
+def probe_audio(file_data: bytes) -> dict:
+    """Read duration / sample-rate / channels from an audio clip's header.
 
-    Matched on the exception class name rather than importing Pillow's
-    ``DecompressionBombError``: the PIL import is deliberately lazy, and it may
-    itself be what failed.
+    Uses `soundfile` (lazy import), which reads only the container header for
+    WAV/FLAC rather than decoding the whole clip. MP3 is best-effort via the
+    same libsndfile stack. Returns a ``metadata_warning`` (and no numeric
+    fields) when the header cannot be read, so the detail payload never silently
+    omits the Audio section.
     """
-    if type(exc).__name__ == "DecompressionBombError":
-        return _BOMB_WARNING
-    return _IMAGE_WARNING
-
-
-def _extract_image_metadata(file_data: bytes) -> dict:
     try:
-        from PIL import Image
-        from PIL.ExifTags import TAGS
+        import soundfile as sf
 
-        img = Image.open(io.BytesIO(file_data))
-        result: dict = {
-            "image_width": img.width,
-            "image_height": img.height,
-        }
-
-        exif_data = {}
-        raw_exif = img.getexif()
-        if raw_exif:
-            for tag_id, value in raw_exif.items():
-                tag = TAGS.get(tag_id, tag_id)
-                if isinstance(value, bytes):
-                    try:
-                        value = value.decode("utf-8", errors="replace")
-                    except Exception:
-                        value = str(value)
-                exif_data[str(tag)] = str(value)
-            result["exif"] = exif_data if exif_data else None
-        return result
-    except Exception as exc:
-        logger.warning("Image metadata extraction failed", exc_info=True)
-        return {"metadata_warning": _image_warning(exc)}
-
-
-def _extract_pdf_metadata(file_data: bytes) -> dict:
-    try:
-        from PyPDF2 import PdfReader
-
-        reader = PdfReader(io.BytesIO(file_data))
-        info = reader.metadata
+        with sf.SoundFile(io.BytesIO(file_data)) as clip:
+            frames = clip.frames
+            sample_rate = clip.samplerate
+            channels = clip.channels
+        duration = frames / sample_rate if sample_rate else None
         return {
-            "pdf_pages": len(reader.pages),
-            "pdf_author": info.author if info else None,
-            "pdf_title": info.title if info else None,
+            "duration_seconds": duration,
+            "sample_rate": sample_rate,
+            "channels": channels,
         }
     except Exception:
-        logger.warning("PDF metadata extraction failed", exc_info=True)
-        return {"metadata_warning": _PDF_WARNING}
+        logger.warning("Audio metadata extraction failed", exc_info=True)
+        return {"metadata_warning": _AUDIO_WARNING}
 
 
 def extract_metadata(
@@ -91,6 +50,10 @@ def extract_metadata(
     uploaded_at: datetime | None = None,
 ) -> FileMetadataDetail:
     """Compute rich metadata from raw file bytes.
+
+    Checksums, size, and extension are computed for every object. Audio clips
+    additionally get duration / sample-rate / channels from their header. Other
+    content types carry no format-specific fields and no warning.
 
     `uploaded_at` is the object's real upload time; callers recomputing metadata
     for an already-stored object MUST pass it (from head_object's LastModified)
@@ -102,11 +65,8 @@ def extract_metadata(
     extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
     extra: dict = {}
-
-    if content_type.startswith("image/"):
-        extra = _extract_image_metadata(file_data)
-    elif content_type == "application/pdf":
-        extra = _extract_pdf_metadata(file_data)
+    if content_type.startswith("audio/"):
+        extra = probe_audio(file_data)
 
     return FileMetadataDetail(
         filename=filename,

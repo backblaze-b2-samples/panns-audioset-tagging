@@ -8,19 +8,31 @@ import {
 } from "@tanstack/react-query";
 import {
   ApiError,
+  createTagging,
   deleteFile,
+  deleteTagging,
+  editTagging,
+  getCorpusStats,
   getDownloadUrl,
   getFileDetail,
   getFiles,
   getFileStats,
   getHealth,
+  getLibrary,
+  getManifest,
   getPreviewUrl,
+  getTaggingDetail,
+  getTaggings,
   getUploadActivity,
+  runTagging,
 } from "@/lib/api-client";
 import type {
+  CreateTaggingRequest,
+  EditTaggingRequest,
   FileMetadata,
   FileMetadataDetail,
-} from "@vibe-coding-starter-kit/shared";
+  Tagging,
+} from "@panns-audioset-tagging/shared";
 
 // Single source of truth for query keys. Keep these tightly scoped so that
 // invalidating "files" doesn't blow away unrelated caches, and so an IDE
@@ -35,6 +47,11 @@ export const qk = {
   preview: (key: string) => [...qk.all, "preview", key] as const,
   detail: (key: string) => [...qk.all, "detail", key] as const,
   health: () => [...qk.all, "health"] as const,
+  taggings: () => [...qk.all, "taggings"] as const,
+  tagging: (audioKey: string) => [...qk.all, "tagging", audioKey] as const,
+  library: () => [...qk.all, "library"] as const,
+  corpusStats: () => [...qk.all, "corpus-stats"] as const,
+  manifest: () => [...qk.all, "manifest"] as const,
 };
 
 export type Health = Awaited<ReturnType<typeof getHealth>>;
@@ -167,5 +184,89 @@ export function useDeleteFile() {
       dropDeletedFileFromCache(qc, fileKey);
       qc.invalidateQueries({ queryKey: qk.all });
     },
+  });
+}
+
+// --- Taggings (primary entity) + Library -----------------------------------
+
+export function useTaggings({ enabled = true }: QueryGate = {}) {
+  return useQuery({
+    queryKey: qk.taggings(),
+    queryFn: getTaggings,
+    enabled,
+  });
+}
+
+export function useTaggingDetail(audioKey: string | undefined, enabled = true) {
+  return useQuery<Tagging, ApiError>({
+    queryKey: qk.tagging(audioKey ?? ""),
+    queryFn: () => getTaggingDetail(audioKey as string),
+    enabled: enabled && !!audioKey,
+  });
+}
+
+export function useLibrary({ enabled = true }: QueryGate = {}) {
+  return useQuery({
+    queryKey: qk.library(),
+    queryFn: getLibrary,
+    enabled,
+  });
+}
+
+export function useCorpusStats({ enabled = true }: QueryGate = {}) {
+  return useQuery({
+    queryKey: qk.corpusStats(),
+    queryFn: getCorpusStats,
+    enabled,
+  });
+}
+
+export function useManifest({ enabled = true }: QueryGate = {}) {
+  return useQuery({
+    queryKey: qk.manifest(),
+    queryFn: getManifest,
+    enabled,
+  });
+}
+
+/** Invalidate everything a tag write affects: the list, the corpus stats, the
+ *  manifest, the Library tag-status badges, and the affected clip's detail. */
+function invalidateAfterTagWrite(qc: QueryClient, audioKey: string) {
+  qc.invalidateQueries({ queryKey: qk.taggings() });
+  qc.invalidateQueries({ queryKey: qk.corpusStats() });
+  qc.invalidateQueries({ queryKey: qk.manifest() });
+  qc.invalidateQueries({ queryKey: qk.library() });
+  qc.invalidateQueries({ queryKey: qk.tagging(audioKey) });
+}
+
+export function useCreateTagging() {
+  const qc = useQueryClient();
+  return useMutation<Tagging, ApiError, CreateTaggingRequest>({
+    mutationFn: (req) => createTagging(req),
+    onSuccess: (data) => invalidateAfterTagWrite(qc, data.audio_key),
+  });
+}
+
+export function useEditTagging() {
+  const qc = useQueryClient();
+  return useMutation<Tagging, ApiError, EditTaggingRequest>({
+    mutationFn: (req) => editTagging(req),
+    onSuccess: (data) => invalidateAfterTagWrite(qc, data.audio_key),
+  });
+}
+
+export function useRunTagging() {
+  const qc = useQueryClient();
+  return useMutation<Tagging, ApiError, string>({
+    mutationFn: (audioKey) => runTagging(audioKey),
+    onSuccess: (data) => invalidateAfterTagWrite(qc, data.audio_key),
+  });
+}
+
+export function useDeleteTagging() {
+  const qc = useQueryClient();
+  return useMutation<{ deleted: boolean; audio_key: string }, ApiError, string>({
+    mutationFn: (audioKey) => deleteTagging(audioKey),
+    onSuccess: (_data, audioKey) => invalidateAfterTagWrite(qc, audioKey),
   });
 }
