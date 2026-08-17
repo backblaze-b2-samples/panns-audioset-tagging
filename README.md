@@ -11,8 +11,6 @@ downstream training/search pipelines read over the S3-compatible API. Every
 artifact — source audio, tag JSON, embedding, manifest — lives in B2. **B2 is the
 storage layer for a bulk audio-ML workflow.**
 
-Explore the official [Backblaze B2 AI integrations and sample applications](https://www.backblaze.com/cloud-storage/b2-ai-integrations?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-panns-audioset-tagging) directory and the checked-in [local OpenAPI contract](docs/api/openapi.json).
-
 **What you get out of the box:**
 - Local PANNs AudioSet tagging — 527-class probabilities + 2048-dim embedding per clip, top-k extraction, **CPU by default** (GPU auto-detected)
 - Bulk audio ingest to B2 under `audio/…` (WAV / FLAC / MP3)
